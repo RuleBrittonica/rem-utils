@@ -46,7 +46,8 @@ impl<'a> ASTAnnotator<'a> {
         self.env.add_binding(var.clone(), value)
     }
 
-    // check if Ident, if not look up expr in AST map
+   // check if Ident, if not look up expr in AST map
+    #[allow(dead_code)]
     pub fn lookup_expr(&mut self, expr: &'a syn::Expr) -> Option<Label> {
         if let Expr::Path(syn::ExprPath {
             path: syn::Path { segments, .. },
@@ -60,6 +61,7 @@ impl<'a> ASTAnnotator<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn lookup_ast<'b>(&self, ident: &'b dyn ASTKey) -> Option<Label> {
         self.annotations.get(&ident).map(|v| *v)
     }

@@ -6,9 +6,9 @@
 #![feature(iter_intersperse)]
 // #![feature(box_syntax)]
 
-extern crate rustc_driver;
-pub extern crate rustc_lint;
-pub extern crate rustc_span;
+// extern crate rustc_driver;
+// pub extern crate rustc_lint;
+// pub extern crate rustc_span;
 pub extern crate string_cache;
 
 pub mod annotation;

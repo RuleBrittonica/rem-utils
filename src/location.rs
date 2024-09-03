@@ -1,53 +1,57 @@
-use std::{fmt::Display, path::PathBuf};
+use std::{
+    fmt::Display,
+    fs,
+    path::{Path, PathBuf},
+};
 
-use crate::filesystem::FileSystem;
-use rustc_lint::{LateContext, LintContext};
-use rustc_span::Span;
-
+/// Represents a source location in a file system
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RawLoc {
-    pub filename: rustc_span::FileName,
-    pub lines: Vec<rustc_span::LineInfo>,
+    pub filename: PathBuf,
+    pub lines: Vec<u32>, // Line numbers as u32
 }
 
-unsafe impl Send for RawLoc {}
-
 impl RawLoc {
-    pub fn new<'a>(ctx: &LateContext<'a>, span: Span) -> Self {
-        let sess = ctx.sess();
-        let source_map = sess.source_map();
-        let lines = source_map.span_to_lines(span).expect("").lines;
-        let filename = source_map.span_to_filename(span);
-        Self { lines, filename }
+    /// Create a new `RawLoc` from a file path and line numbers
+    pub fn new(filename: PathBuf, lines: Vec<u32>) -> Self {
+        Self { filename, lines }
     }
 }
 
+/// Represents a location with a path and function name
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Loc(PathBuf, String);
 
 impl Loc {
+    /// Get the path associated with the location
     pub fn path(&self) -> &PathBuf {
         &self.0
     }
 
+    /// Get the function name from the location
     pub fn fn_name(&self) -> &str {
-        self.1.split("::").last().unwrap()
+        self.1.split("::").last().unwrap_or("")
     }
+
+    /// Get the full function name from the location
     pub fn full_fn_name(&self) -> &str {
         &self.1
     }
+
+    /// Get the file name from the full function name
     pub fn file_name(&self) -> String {
         let split_str = self.1.split("::");
         let mut split_as_vec = split_str.collect::<Vec<&str>>();
         split_as_vec.pop();
-        let new_str = split_as_vec.join("::");
-        let new_str_cloned = new_str.clone();
-        new_str_cloned
+        split_as_vec.join("::")
     }
+
+    /// Read the source code from the file system
     pub fn read_source<S: FileSystem>(&self, fs: &S) -> Result<String, S::FSError> {
         fs.read(&self.0)
     }
 
+    /// Write the source code to the file system
     pub fn write_source<S: FileSystem>(&self, fs: &S, str: &str) -> Result<(), S::FSError> {
         fs.write(&self.0, str.as_bytes())
     }
@@ -55,17 +59,25 @@ impl Loc {
 
 impl Display for Loc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.0.to_str().unwrap(), self.1)
+        write!(f, "{}:{}", self.0.to_str().unwrap_or(""), self.1)
     }
 }
 
-impl From<(RawLoc, string_cache::DefaultAtom)> for Loc {
-    fn from((loc, name): (RawLoc, string_cache::DefaultAtom)) -> Self {
-        match loc.filename {
-            rustc_span::FileName::Real(path) => {
-                Loc(path.local_path().unwrap().into(), format!("{}", name))
-            }
-            _ => panic!("unsupported source location"),
-        }
+impl From<(RawLoc, String)> for Loc {
+    fn from((loc, name): (RawLoc, String)) -> Self {
+        Loc(loc.filename, name)
     }
+}
+
+/// Trait representing a file system abstraction
+pub trait FileSystem: Clone {
+    type FSError: std::fmt::Debug;
+
+    fn exists<P: AsRef<Path>>(&self, path: P) -> Result<bool, Self::FSError>;
+    fn read<P: AsRef<Path>>(&self, filename: P) -> Result<String, Self::FSError>;
+    fn write<P: AsRef<Path>, C: AsRef<[u8]>>(
+        &self,
+        filename: P,
+        contents: C,
+    ) -> Result<(), Self::FSError>;
 }

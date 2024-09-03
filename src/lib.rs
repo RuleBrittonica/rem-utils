@@ -1,10 +1,6 @@
-// #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(never_type)]
-// #![feature(fs_try_exists)]
-// #![feature(is_some_and)]
 #![feature(iter_intersperse)]
-// #![feature(box_syntax)]
 
 // extern crate rustc_driver;
 // pub extern crate rustc_lint;

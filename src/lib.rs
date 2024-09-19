@@ -38,6 +38,8 @@ pub fn compile_file(file_name: &str, args: &Vec<&str>) -> Command {
     compile
 }
 
+// More current method for calling rustfmt - use this over format_source from
+// now on
 pub fn fmt_file(file_name: &str, args: &Vec<&str>) -> Command {
     let mut fmt = Command::new("rustfmt");
     for arg in args {

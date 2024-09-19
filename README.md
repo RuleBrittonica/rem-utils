@@ -31,6 +31,28 @@ however, other nightly builds may also work.
 
 You can install these components by running:
 
-    ```bash
-    rustup component add --toolchain nightly-2024-08-28 rust-src rustc-dev llvm-tools-preview
-    ```
+```bash
+rustup component add --toolchain nightly-2024-08-28 rust-src rustc-dev llvm-tools-preview
+```
+
+
+## Function Exports
+
+1. **Compilation Utilities**
+   - `compile_file(file_name: &str, args: &Vec<&str>) -> Command`: Compiles a Rust file using `rustc` with optional arguments.
+
+2. **Formatting Utilities**
+   - `fmt_file(file_name: &str, args: &Vec<&str>) -> Command`: Formats a Rust file using `rustfmt` with optional arguments.
+
+3. **Linting Utilities**
+   - `lint_file(file_name: &str, args: &Vec<&str>) -> Command`: Lints a Rust file using `cargo clippy` with optional arguments.
+
+4. **Project Checking and Building**
+   - `check_project(manifest_path: &str, cargo_args: &Vec<&str>) -> Command`: Checks the Rust project for errors using `cargo check`, with customizable arguments.
+   - `build_project(manifest_path: &str, cargo_args: &Vec<&str>) -> Command`: Builds the Rust project using `cargo build`, with customizable arguments.
+
+5. **Code Analysis**
+   - `find_caller(file_name: &str, caller_name: &str, callee_name: &str, callee_body_only: bool) -> (bool, String, String)`: Finds a function call within the specified file and retrieves the caller and callee function definitions.
+
+6. **Source Formatting**
+   - `format_source(src: &str) -> String`: Formats Rust source code using `rustfmt`.

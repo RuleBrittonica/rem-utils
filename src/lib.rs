@@ -38,6 +38,25 @@ pub fn compile_file(file_name: &str, args: &Vec<&str>) -> Command {
     compile
 }
 
+pub fn fmt_file(file_name: &str, args: &Vec<&str>) -> Command {
+    let mut fmt = Command::new("rustfmt");
+    for arg in args {
+        fmt.arg(arg);
+    }
+    fmt.arg(file_name);
+    fmt
+}
+
+pub fn lint_file(file_name: &str, args: &Vec<&str>) -> Command {
+    let mut lint = Command::new("cargo");
+    lint.arg("clippy");
+    for arg in args {
+        lint.arg(arg);
+    }
+    lint.arg("--").arg(file_name);
+    lint
+}
+
 pub fn check_project(manifest_path: &str, cargo_args: &Vec<&str>) -> Command {
     let mut check = Command::new("cargo");
     check.arg("check");

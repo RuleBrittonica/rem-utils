@@ -12,11 +12,9 @@ It is used as a reference for the following crates:
 
 ## Requirements
 
-It requires internal access to the rust toolchain, using
-`#![feature(rustc_private)]`.
+**As of version 0.1.4, this library is no longer dependent on rustc!**
 
-The rust-toolchain.toml file specifies the rest of the build dependecies, and is
-shared across all of the REM toolchain.
+The rust-toolchain.toml file specifies the rest of the build dependecies, and is shared across all of the REM toolchain.
 
 As a minimum you should have:
 
@@ -34,7 +32,6 @@ You can install these components by running:
 ```bash
 rustup component add --toolchain nightly-2024-08-28 rust-src rustc-dev llvm-tools-preview
 ```
-
 
 ## Function Exports
 

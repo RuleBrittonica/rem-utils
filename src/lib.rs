@@ -2,9 +2,6 @@
 #![feature(never_type)]
 #![feature(iter_intersperse)]
 
-// extern crate rustc_driver;
-// pub extern crate rustc_lint;
-// pub extern crate rustc_span;
 pub extern crate string_cache;
 
 pub mod annotation;

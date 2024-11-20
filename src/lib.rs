@@ -18,16 +18,20 @@ pub mod parser;
 pub mod typ;
 pub mod wrappers;
 
-use log::debug;
+use log::{debug, info};
 use quote::ToTokens;
 use std::fs;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
 use syn::visit_mut::VisitMut;
-use syn::{ExprCall, ExprMethodCall, File, ImplItemMethod, ItemFn, TraitItemMethod};
+use syn::{ExprCall, ExprMethodCall, File, ImplItemMethod, ItemFn, TraitItemMethod, parse_file};
+
+use std::path::PathBuf;
 
 use home::cargo_home;
+use regex::Regex;
+use colored::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////        COMPILE        /////////////////////////////////////////////
@@ -289,4 +293,58 @@ pub fn format_source(src: &str) -> String {
     let stdout = rustfmt.wait_with_output().unwrap();
 
     String::from_utf8(stdout.stdout).unwrap()
+}
+
+pub fn remove_all_files(dir: &PathBuf) -> () {
+    info!("Removing all files in directory: {:?}", dir);
+    for entry in fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_file() {
+            info!("Removing file: {:?}", path);
+            fs::remove_file(path).unwrap();
+        }
+    }
+}
+
+/// Strips ANSI color codes from a string using a regex
+/// This is useful for comparing strings with ANSI color codes to strings without
+pub fn strip_ansi_codes(s: &str) -> String {
+    let ansi_regex = Regex::new(r"\x1b\[([0-9]{1,2}(;[0-9]{0,2})*)m").unwrap();
+    ansi_regex.replace_all(s, "").to_string()
+}
+
+/// Parses two strings into ASTs and compares them for equality
+pub fn parse_and_compare_ast(first: &String, second: &String) -> Result<bool, syn::Error> {
+    let first_ast: File = parse_file(&first)?;
+    let second_ast: File = parse_file(&second)?;
+
+    // Convert both ASTs back into token stres for comparison
+    // FIXME this is sometimes buggy and is convinced that the two files are
+    // different when they are infact the same
+    let first_tokens: String = first_ast.into_token_stream().to_string();
+    let second_tokens: String = second_ast.into_token_stream().to_string();
+
+    Ok(first_tokens == second_tokens)
+}
+
+/// Prints the differences between two files to stdout
+pub fn print_file_diff(expected_file_path: &str, output_file_path: &str) -> Result<(), std::io::Error> {
+    let expected_content = fs::read_to_string(expected_file_path)?;
+    let output_content = fs::read_to_string(output_file_path)?;
+
+    if expected_content != output_content {
+        println!("Differences found between expected and output:");
+        for diff in diff::lines(&expected_content, &output_content) {
+            match diff {
+                diff::Result::Left(l) => println!("{}", format!("- {}", l).red()), // Expected but not in output
+                diff::Result::Right(r) => println!("{}", format!("+ {}", r).green()), // In output but not in expected
+                diff::Result::Both(b, _) => println!("{}", format!("  {}", b)), // Same in both
+            }
+        }
+    } else {
+        println!("{}", "No differences found.".green());
+    }
+
+    Ok(())
 }

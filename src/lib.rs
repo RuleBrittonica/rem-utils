@@ -17,17 +17,39 @@ pub mod macros;
 pub mod parser;
 pub mod typ;
 pub mod wrappers;
+pub mod local_config;
 
-use log::{debug, info};
+use config::{
+    Config,
+    File as CfgFile,
+};
+
+use local_config::Settings;
+
+use log::{
+    debug, info, error,
+};
 use quote::ToTokens;
-use std::fs;
-use std::io::Write;
-use std::process::{Command, Stdio};
 
-use syn::visit_mut::VisitMut;
-use syn::{ExprCall, ExprMethodCall, File, ImplItemMethod, ItemFn, TraitItemMethod, parse_file};
+use std::{
+    fs,
+    io::Write,
+    process::{Command, Stdio},
+    path::PathBuf,
+    env,
+    error::Error,
+};
 
-use std::path::PathBuf;
+use syn::{
+    visit_mut::VisitMut,
+    ExprCall,
+    ExprMethodCall,
+    File,
+    ImplItemMethod,
+    ItemFn,
+    TraitItemMethod,
+    parse_file
+};
 
 use home::cargo_home;
 use regex::Regex;
@@ -274,6 +296,102 @@ pub fn find_caller(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////          MISC          ////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Resolves the path to the Charon Binary.
+/// - If the user has provided a path via the CLI, use that.
+/// - Otherwise, use the path speficied in the environment variable `CHARON_PATH`.
+/// - If neither of the above are provided, use the path specified in the
+///   `config.toml` file.
+/// - If none of the above are provided, use the default path, `./charon`
+pub fn resolve_charon_path(cli_charon_path: &Option<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
+    // 1. Check if the user has provided a path via the CLI
+    if let Some(path) = cli_charon_path {
+        info!("Using Charon path provided via CLI: {:?}", path.clone());
+        return Ok(path.clone());
+    }
+
+    // 2. Check if the user has provided a path via the environment variable
+    if let Ok(path) = env::var("CHARON_PATH") {
+        info!("Using Charon path provided via environment variable: {:?}", path);
+        return Ok(PathBuf::from(path));
+    }
+
+    // 3. Check if the user has provided a path via the config file
+    if let Ok(settings) = get_config() {
+        info!("Using Charon path provided via config file: {:?}", get_charon_path(&settings));
+        return Ok(get_charon_path(&settings));
+    }
+
+    // 4. Use the default path (assumed the binary is in the current directory)
+    info!("Using default Charon path: ./charon");
+    if let Ok(path) = env::current_dir() {
+        let charon_path = path.join("charon");
+        if charon_path.exists() {
+            return Ok(charon_path);
+        }
+    }
+
+    error!("Could not find Charon binary. Please provide the path to the binary using the `--charon-path` flag or the `CHARON_PATH` environment variable.");
+    Err("Could not find Charon binary. Please provide the path to the binary using the `--charon-path` flag or the `CHARON_PATH` environment variable.".into())
+}
+
+
+/// Resolves the path to the Aeneas Binary.
+/// - If the user has provided a path via the CLI, use that.
+/// - Otherwise, use the path speficied in the environment variable `AENEAS_PATH`.
+/// - If neither of the above are provided, use the path specified in the
+///  `config.toml` file.
+/// - If none of the above are provided, use the default path, `./aeneas`
+pub fn resolve_aeneas_path(cli_aneas_path: &Option<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
+    // 1. Check if the user has provided a path via the CLI
+    if let Some(path) = cli_aneas_path {
+        info!("Using Aeneas path provided via CLI: {:?}", path.clone());
+        return Ok(path.clone());
+    }
+
+    // 2. Check if the user has provided a path via the environment variable
+    if let Ok(path) = env::var("AENEAS_PATH") {
+        info!("Using Aeneas path provided via environment variable: {:?}", path);
+        return Ok(PathBuf::from(path));
+    }
+
+    // 3. Check if the user has provided a path via the config file
+    if let Ok(settings) = get_config() {
+        info!("Using Aeneas path provided via config file: {:?}", get_aeneas_path(&settings));
+        return Ok(get_aeneas_path(&settings));
+    }
+
+    // 4. Use the default path (assumed the binary is in the current directory)
+    if let Ok(path) = env::current_dir() {
+        let aeneas_path = path.join("aeneas");
+        if aeneas_path.exists() {
+            return Ok(aeneas_path);
+        }
+    }
+
+    error!("Could not find Aeneas binary. Please provide the path to the binary using the `--aeneas-path` flag or the `AENEAS_PATH` environment variable.");
+    Err("Could not find Aeneas binary. Please provide the path to the binary using the `--aeneas-path` flag or the `AENEAS_PATH` environment variable.".into())
+
+}
+
+fn get_config() -> Result<Settings, Box<dyn std::error::Error>> {
+    let config: Config = Config::builder()
+        .add_source(CfgFile::with_name("Config")
+        .required(true))
+        .build()?;
+    let s: Settings = config.try_deserialize()?;
+    Ok(s)
+}
+
+fn get_aeneas_path(settings: &Settings) -> PathBuf {
+    let aeneas_str:&String  = &settings.programs.aeneas;
+    PathBuf::from(aeneas_str)
+}
+
+fn get_charon_path(settings: &Settings) -> PathBuf {
+    let charon_str:&String  = &settings.programs.charon;
+    PathBuf::from(charon_str)
+}
 
 pub fn format_source(src: &str) -> String {
     let rustfmt = {
